@@ -1,0 +1,19 @@
+nacos:
+  config:
+    type: yaml
+    server-addr: 192.168.44.12:8848
+    namespace: dev
+    data-id: p19-file-sync-service
+    auto-refresh: true
+    group: Galaxy
+    username: nacos
+    password: nacos
+    bootstrap:
+      enable: true
+      log:
+        enable: true
+spring:
+  profiles:
+    active: dev
+logging:
+  config: ./config/log4j2-dev.xml
