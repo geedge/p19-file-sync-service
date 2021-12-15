@@ -71,7 +71,7 @@ public class HttpUtil {
                 String responseEntity = EntityUtils.toString(response.getEntity(), "UTF-8");
                 JSONObject jsonObj = (JSONObject) JSON.parse(responseEntity);
                 if(jsonObj!=null){
-                    if (responseEntity.contains("\"code\": 200")) {
+                    if (responseEntity.contains("\"code\":200")) {
                         PostFileResponse postFileResponse = JSON.toJavaObject(jsonObj, PostFileResponse.class);
                         isSuccess = true;
                         log.info("post file success. current url: {}, msg: {}", url, responseEntity);
