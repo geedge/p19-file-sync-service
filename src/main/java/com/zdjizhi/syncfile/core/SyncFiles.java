@@ -1,6 +1,5 @@
 package com.zdjizhi.syncfile.core;
 
-import cn.hutool.core.io.IoUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import com.zdjizhi.syncfile.config.ThreadPoolFactory;
@@ -10,7 +9,6 @@ import com.zdjizhi.syncfile.utils.HttpUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -35,16 +33,15 @@ public class SyncFiles {
             for (List<Source> sourceList : fileList) {
                 callableList.add(() -> {
                     boolean status = false;
-                    InputStream content = null;
                     try {
                         for (Source source : sourceList) {
                             String source_oss_path = source.getSource_oss_path();
                             String destination_oss_path = source.getDestination_oss_path();
                             if (source_oss_path != null && !"".equals(source_oss_path)
                                     && destination_oss_path != null && !"".equals(destination_oss_path)) {
-                                content = httpUtil.httpGetInputStream(source_oss_path);
-                                if (content != null) {
-                                    boolean isSuccess = httpUtil.httpPostInputStream(destination_oss_path, content);
+                                byte[] file = httpUtil.httpGetFile(source_oss_path);
+                                if (file != null) {
+                                    boolean isSuccess = httpUtil.httpPostFile(destination_oss_path, file);
                                     if (!isSuccess) {
                                         log.error("Sync file failed, post oss file error. destination_oss_path: {}", destination_oss_path);
                                         monitorProperties.addPostFileErrorCount();
@@ -67,8 +64,6 @@ public class SyncFiles {
                         log.error("Sync file failed.", e);
                         monitorProperties.addFileSyncError();
                         status = false;
-                    } finally {
-                        IoUtil.close(content);
                     }
                     return status;
                 });

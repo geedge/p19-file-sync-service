@@ -6,7 +6,7 @@
 
     <groupId>com.zdjizhi</groupId>
     <artifactId>p19-file-sync-service</artifactId>
-    <version>21.12.01</version>
+    <version>23.03.09</version>
     <name>p19-file-sync-service</name>
 
     <parent>
@@ -20,14 +20,14 @@
         <repository>
             <id>nexus</id>
             <name>Team Nexus Repository</name>
-            <url>http://192.168.40.125:8099/content/groups/public/</url>
+            <url>http://192.168.40.153:8099/content/groups/public/</url>
         </repository>
     </repositories>
     <pluginRepositories>
         <pluginRepository>
             <id>nexus</id>
             <name>Team Nexus Repository</name>
-            <url>http://192.168.40.125:8099/content/groups/public/</url>
+            <url>http://192.168.40.153:8099/content/groups/public/</url>
         </pluginRepository>
     </pluginRepositories>
 
@@ -238,7 +238,7 @@
                     <!--Dockerfile文件所在目录-->
                     <dockerDirectory>docker</dockerDirectory>
                     <buildArgs>
-                        <JDK_IMAGE>192.168.40.153:9080/common/jdk:1.8.0_73-jre</JDK_IMAGE>
+                        <JDK_IMAGE>192.168.40.153:9080/common/jdk:1.8.0_202</JDK_IMAGE>
                         <GO_IMAGE>192.168.40.153:9080/common/golang:1.15.6</GO_IMAGE>
                         <JAR_FILE>${project.build.finalName}.xjar</JAR_FILE>
                     </buildArgs>
