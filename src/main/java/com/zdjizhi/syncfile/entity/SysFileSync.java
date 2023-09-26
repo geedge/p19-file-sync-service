@@ -3,18 +3,18 @@ package com.zdjizhi.syncfile.entity;
 import java.util.List;
 
 public class SysFileSync {
-    private List<Source> sourceList;
+    private List<Source> source_list;
     private long common_log_id;
     private long common_recv_time;
     private String common_schema_type;
     private long processing_time;
 
-    public List<Source> getSourceList() {
-        return sourceList;
+    public List<Source> getSource_list() {
+        return source_list;
     }
 
-    public void setSourceList(List<Source> sourceList) {
-        this.sourceList = sourceList;
+    public void setSource_list(List<Source> source_list) {
+        this.source_list = source_list;
     }
 
     public long getCommon_log_id() {

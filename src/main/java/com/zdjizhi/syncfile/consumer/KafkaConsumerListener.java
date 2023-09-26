@@ -9,6 +9,7 @@ import com.zdjizhi.syncfile.core.SyncFiles;
 import com.zdjizhi.syncfile.entity.Source;
 import com.zdjizhi.syncfile.entity.SysFileSync;
 import com.zdjizhi.syncfile.monitor.MonitorProperties;
+import com.zdjizhi.syncfile.utils.HttpUtil;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @Component
 public class KafkaConsumerListener {
@@ -26,6 +28,10 @@ public class KafkaConsumerListener {
     SyncFiles syncFiles;
     @Autowired
     MonitorProperties monitorProperties;
+    @Autowired
+    HttpUtil httpUtil;
+    @Autowired
+    ThreadPoolExecutor threadPool;
 
     @KafkaListener(topics = {"${kafka.consumer.topic}"}, containerFactory = "kafkaListenerContainerFactory")
     public void listen(List<ConsumerRecord<?, ?>> records, Acknowledgment ack) {
@@ -36,19 +42,26 @@ public class KafkaConsumerListener {
                 JSONObject jsonObj = (JSONObject) JSON.parse(record.value().toString());
                 SysFileSync sysFileSync = JSON.toJavaObject(jsonObj, SysFileSync.class);
                 if (sysFileSync != null) {
-                    List<Source> sourceList = sysFileSync.getSourceList();
-                    if(sourceList.size() < 1){
-                        log.error("kafka data error, sourceList is null. kafka data: "+record.value().toString());
+                    List<Source> sourceList = sysFileSync.getSource_list();
+                    if (sourceList.size() < 1) {
+                        log.error("kafka data error, sourceList is null. kafka data: " + record.value().toString());
                         monitorProperties.addFileSyncError();
-                    }else {
+                    } else {
                         fileList.add(sourceList);
                     }
-                }else {
-                    log.error("parse kafka data error. kafka data: "+record.value().toString());
+                } else {
+                    log.error("parse kafka data error. kafka data: " + record.value().toString());
                     monitorProperties.addFileSyncError();
                 }
+                monitorProperties.addKafkaRecordCount();
             }
-            syncFiles.syncFiles(fileList);
+            while (true) {
+                if (threadPool.getActiveCount() < threadPool.getMaximumPoolSize()) {
+                    threadPool.submit(() -> syncFiles.syncFiles(fileList));
+                    break;
+                }
+            }
+            ack.acknowledge();
         } catch (Exception e) {
             log.error("consume kafka data error.", e);
             monitorProperties.addFileSyncError();

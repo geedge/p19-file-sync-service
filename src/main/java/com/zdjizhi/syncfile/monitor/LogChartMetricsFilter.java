@@ -57,12 +57,15 @@ public class LogChartMetricsFilter implements Filter {
         Long hosError = monitorProperties.getHosError();
         Long ossError = monitorProperties.getOssError();
 
+        Long kafkaRecordCount = monitorProperties.getKafkaRecordCount();
+
         dashboardMap.put("downloadFileSuccessCount", downloadFileSuccessCount);
         dashboardMap.put("downloadFileErrorCount",downloadFileErrorCount);
         dashboardMap.put("postFileSuccessCount", postFileSuccessCount);
         dashboardMap.put("postFileErrorCount", postFileErrorCount);
         dashboardMap.put("downloadFileSize", downloadFileSize);
         dashboardMap.put("postFileSize", postFileSize);
+        dashboardMap.put("kafkaRecordCount",kafkaRecordCount);
 
         errorTypeMap.put("fileSyncError",fileSyncError);
         errorTypeMap.put("hosError",hosError);
@@ -91,5 +94,4 @@ public class LogChartMetricsFilter implements Filter {
             }
         }
     }
-
 }

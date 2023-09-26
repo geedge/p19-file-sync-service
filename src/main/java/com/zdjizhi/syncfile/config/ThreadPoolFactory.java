@@ -6,8 +6,7 @@ import com.alibaba.nacos.api.config.annotation.NacosConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 @Configuration
 //@ConfigurationProperties(prefix = "thread")
@@ -25,7 +24,9 @@ public class ThreadPoolFactory {
     }
 
     @Bean(name = "threadPool")
-    public ExecutorService getThreadPool() {
-        return Executors.newFixedThreadPool(maxSize);
+    public ThreadPoolExecutor getThreadPool() {
+        return new ThreadPoolExecutor(
+                maxSize, maxSize,
+                0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(maxSize*2));
     }
 }

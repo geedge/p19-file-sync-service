@@ -26,7 +26,7 @@ public class HttpUtil {
     @Autowired
     private RequestConfig requestConfig;
     @Autowired
-    MonitorProperties monitorProperties;
+    private MonitorProperties monitorProperties;
 
     public byte[] httpGetFile(String url) {
         byte[] data = null;

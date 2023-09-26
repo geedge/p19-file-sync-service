@@ -10,12 +10,13 @@ import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.HttpRequestRetryHandler;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.protocol.HttpContext;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
@@ -77,109 +78,71 @@ public class HttpClientPool {
         this.retryNum = retryNum;
     }
 
-    /**
-     * 首先实例化一个连接池管理器，设置最大连接数、并发连接数
-     *
-     * @return
-     */
-    @Bean(name = "httpClientConnectionManager")
-    public PoolingHttpClientConnectionManager getHttpClientConnectionManager() {
-        PoolingHttpClientConnectionManager httpClientConnectionManager = new PoolingHttpClientConnectionManager();
-        //最大连接数
-        httpClientConnectionManager.setMaxTotal(maxTotal);
-        //并发数
-        httpClientConnectionManager.setDefaultMaxPerRoute(defaultMaxPerRoute);
-        return httpClientConnectionManager;
-    }
-
-    /**
-     * 实例化连接池，设置连接池管理器。
-     * 这里需要以参数形式注入上面实例化的连接池管理器
-     *
-     * @param httpClientConnectionManager
-     * @return
-     */
-    @Bean(name = "httpClientBuilder")
-    public HttpClientBuilder getHttpClientBuilder(@Qualifier("httpClientConnectionManager") PoolingHttpClientConnectionManager httpClientConnectionManager) {
-        //HttpClientBuilder中的构造方法被protected修饰，所以这里不能直接使用new来实例化一个HttpClientBuilder，可以使用HttpClientBuilder提供的静态方法create()来获取HttpClientBuilder对象
-        HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
-        httpClientBuilder.setConnectionManager(httpClientConnectionManager);
-        return httpClientBuilder;
-    }
-
-    /**
-     * 注入连接池，用于获取httpClient
-     *
-     * @param httpClientBuilder
-     * @return
-     */
-    @Bean
-    public CloseableHttpClient getCloseableHttpClient(@Qualifier("httpClientBuilder") HttpClientBuilder httpClientBuilder,@Qualifier("httpRetryHandler") HttpRequestRetryHandler httpRetryHandler){
-        return httpClientBuilder
-                .setRetryHandler(httpRetryHandler)
-                .build();
-    }
-
-    /**
-     * Builder是RequestConfig的一个内部类
-     * 通过RequestConfig的custom方法来获取到一个Builder对象
-     * 设置builder的连接信息
-     * 这里还可以设置proxy，cookieSpec等属性。有需要的话可以在此设置
-     *
-     * @return
-     */
-    @Bean(name = "builder")
-    public RequestConfig.Builder getBuilder() {
-        RequestConfig.Builder builder = RequestConfig.custom();
-        return builder.setConnectTimeout(connectTimeout)
-                .setConnectionRequestTimeout(connectionRequestTimeout)
-                .setSocketTimeout(socketTimeout)
-                .setStaleConnectionCheckEnabled(staleConnectionCheckEnabled);
+    @Bean(name = "httpClient")
+    public CloseableHttpClient getCloseableHttpClient(){
+        CloseableHttpClient httpClient = null;
+        try {
+            HttpRequestRetryHandler httpRetryHandler = new HttpRequestRetryHandler() {
+                @Override
+                public boolean retryRequest(IOException exception, int executionCount, HttpContext context) {
+                    if (executionCount >= retryNum) {// 如果已经重试了3次，就放弃
+                        log.error("已完成重试次数");
+                        return false;
+                    }
+                    if (exception instanceof NoHttpResponseException) {// 如果服务器丢掉了连接，那么就重试
+                        return true;
+                    }
+                    if (exception instanceof SSLHandshakeException) {// 不要重试SSL握手异常
+                        return false;
+                    }
+                    if (exception instanceof ConnectException) {// 连接被拒绝
+                        return false;
+                    }
+                    if (exception instanceof InterruptedIOException) {// 超时
+                        return true;
+                    }
+                    if (exception instanceof UnknownHostException) {// 目标服务器不可达
+                        return false;
+                    }
+                    if (exception instanceof SSLException) {// ssl握手异常
+                        return false;
+                    }
+                    HttpClientContext clientContext = HttpClientContext.adapt(context);
+                    HttpRequest request = clientContext.getRequest();
+                    // 如果请求是幂等的，就再次尝试
+                    if (!(request instanceof HttpEntityEnclosingRequest)) {
+                        return true;
+                    }
+                    return false;
+                }
+            };
+            PoolingHttpClientConnectionManager httpClientConnectionManager = new PoolingHttpClientConnectionManager();
+            httpClientConnectionManager.setMaxTotal(maxTotal);//最大连接数
+            httpClientConnectionManager.setDefaultMaxPerRoute(defaultMaxPerRoute);//并发数
+            SSLContext sslContext = SSLContextBuilder.create()
+                    .loadTrustMaterial(new TrustSelfSignedStrategy())
+                    .build();
+            httpClient = HttpClientBuilder
+                    .create()
+                    .setConnectionManager(httpClientConnectionManager)
+                    .setRetryHandler(httpRetryHandler)
+                    .setSslcontext(sslContext)
+                    .setSSLHostnameVerifier(new NoopHostnameVerifier())
+                    .build();
+        } catch (Exception e) {
+            log.error("create httpClient error.", e);
+        }
+        return httpClient;
     }
 
     /**
      * 使用builder构建一个RequestConfig对象
      */
     @Bean(name = "requestConfig")
-    public RequestConfig getRequestConfig(@Qualifier("builder") RequestConfig.Builder builder) {
-        return builder.build();
-    }
-
-    @Bean(name = "httpRetryHandler")
-    public HttpRequestRetryHandler getHttpRetryHandler() {
-        return new HttpRequestRetryHandler() {
-            @Override
-            public boolean retryRequest(IOException exception, int executionCount, HttpContext context) {
-                if (executionCount >= retryNum) {// 如果已经重试了3次，就放弃
-                    log.error("已完成重试次数");
-                    return false;
-                }
-                if (exception instanceof NoHttpResponseException) {// 如果服务器丢掉了连接，那么就重试
-                    return true;
-                }
-                if (exception instanceof SSLHandshakeException) {// 不要重试SSL握手异常
-                    return false;
-                }
-                if (exception instanceof ConnectException) {// 连接被拒绝
-                    return false;
-                }
-                if (exception instanceof InterruptedIOException) {// 超时
-                    return true;
-                }
-                if (exception instanceof UnknownHostException) {// 目标服务器不可达
-                    return false;
-                }
-                if (exception instanceof SSLException) {// ssl握手异常
-                    return false;
-                }
-                HttpClientContext clientContext = HttpClientContext.adapt(context);
-                HttpRequest request = clientContext.getRequest();
-                // 如果请求是幂等的，就再次尝试
-                if (!(request instanceof HttpEntityEnclosingRequest)) {
-                    return true;
-                }
-                return false;
-            }
-        };
+    public RequestConfig getRequestConfig() {
+        return RequestConfig.custom().setConnectTimeout(connectTimeout)
+                .setConnectionRequestTimeout(connectionRequestTimeout)
+                .setSocketTimeout(socketTimeout)
+                .setStaleConnectionCheckEnabled(staleConnectionCheckEnabled).build();
     }
 }

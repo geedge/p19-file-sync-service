@@ -2,7 +2,7 @@ nacos:
   config:
     type: yaml
     server-addr: 192.168.44.12:8848
-    namespace: dev
+    namespace: test
     data-id: p19-file-sync-service
     auto-refresh: true
     group: Galaxy

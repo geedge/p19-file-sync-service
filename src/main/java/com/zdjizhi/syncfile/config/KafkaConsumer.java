@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
-import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
@@ -22,7 +21,7 @@ import java.util.Map;
 //@ConfigurationProperties(prefix = "kafka.consumer")
 @NacosConfigurationProperties(prefix = "kafka.consumer", dataId = "${nacos.config.data-id}", groupId = "${nacos.config.group}", type = ConfigType.YAML, autoRefreshed = true)
 @EnableKafka
-public class KafkaConsumerConfig {
+public class KafkaConsumer {
 
     private String servers;
     private boolean enable_auto_commit;
@@ -88,18 +87,13 @@ public class KafkaConsumerConfig {
     @Bean
     public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<String, String>> kafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(consumerFactory());
+        factory.setConsumerFactory(new DefaultKafkaConsumerFactory<>(consumerConfigs()));
         factory.setConcurrency(concurrency);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         factory.setBatchListener(batch_listener);//设置为批量消费
         factory.getContainerProperties().setPollTimeout(poll_timeout);
         return factory;
     }
-
-    private ConsumerFactory<String, String> consumerFactory() {
-        return new DefaultKafkaConsumerFactory<>(consumerConfigs());
-    }
-
 
     private Map<String, Object> consumerConfigs() {
         Map<String, Object> propsMap = new HashMap<>();
@@ -112,9 +106,11 @@ public class KafkaConsumerConfig {
         propsMap.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         propsMap.put(ConsumerConfig.GROUP_ID_CONFIG, group_id);
         propsMap.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, auto_offset_reset);
-        propsMap.put("security.protocol", "SASL_PLAINTEXT");
-        propsMap.put("sasl.mechanism", "PLAIN");
-        propsMap.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username="+sasl_username+" password="+sasl_password+";");
+        if(servers.contains("9094")){
+            propsMap.put("security.protocol", "SASL_PLAINTEXT");
+            propsMap.put("sasl.mechanism", "PLAIN");
+            propsMap.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username="+sasl_username+" password="+sasl_password+";");
+        }
         return propsMap;
     }
 
@@ -122,5 +118,4 @@ public class KafkaConsumerConfig {
     public KafkaConsumerListener listener() {
         return new KafkaConsumerListener();
     }
-
 }

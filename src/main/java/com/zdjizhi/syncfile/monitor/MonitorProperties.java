@@ -4,6 +4,8 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class MonitorProperties {
+    private static Long kafkaRecordCount = 0L;
+
     private static Long downloadFileSuccessCount = 0L;
     private static Long downloadFileErrorCount = 0L;
     private static Long postFileSuccessCount = 0L;
@@ -14,6 +16,14 @@ public class MonitorProperties {
     private static Long fileSyncError = 0L;
     private static Long hosError = 0L;
     private static Long ossError = 0L;
+
+    public Long getKafkaRecordCount() {
+        return kafkaRecordCount;
+    }
+
+    public void addKafkaRecordCount() {
+        kafkaRecordCount = kafkaRecordCount + 1;
+    }
 
     public void addDownloadFileSuccessCount() {
         downloadFileSuccessCount = downloadFileSuccessCount + 1;
